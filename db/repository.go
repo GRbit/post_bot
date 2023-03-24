@@ -43,11 +43,13 @@ func (r *Repo) findUser(userID string) (*model.User, error) {
 
 func (r *Repo) searchAddress(req string) ([]*model.Address, error) {
 	phone := preparePhone(req)
+	tg := prepareTelegram(req)
+
 	aa := []*model.Address{}
 	if err := r.
 		Find(&aa,
-			"phone = ? OR email = ? OR tgnick = ?",
-			phone, req, req).Error; err != nil {
+			"phone = ? OR email = ? OR telegram = ? OR instagram = ?",
+			phone, req, tg, req).Error; err != nil {
 		return nil, err
 	}
 

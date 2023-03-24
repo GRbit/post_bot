@@ -27,6 +27,8 @@ type everyone struct {
 var cache everyone
 
 func Search(req string) ([]string, error) {
+	req = strings.ToLower(req)
+
 	bb, err := globalRepo.searchAddress(req)
 	if err != nil {
 		return nil, xerrors.Errorf("searching in DB: %w", err)
@@ -213,6 +215,15 @@ func preparePhone(b string) string {
 	} else if len(b) == l-1 && strings.HasPrefix(b, "9") {
 		b = "7" + b
 	}
+
+	return b
+}
+
+func prepareTelegram(b string) string {
+	b = strings.ReplaceAll(b, "@", "")
+	b = strings.ReplaceAll(b, " ", "")
+	b = strings.ReplaceAll(b, "http://t.me", "")
+	b = strings.ReplaceAll(b, "https://t.me", "")
 
 	return b
 }
