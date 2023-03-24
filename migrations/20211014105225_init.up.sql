@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE addresses (
     id          SERIAL PRIMARY KEY,
-    telegram    UNIQUE TEXT,
+    telegram    TEXT UNIQUE,
     instagram   TEXT,
     person_name TEXT,
     address     TEXT,

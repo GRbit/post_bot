@@ -42,7 +42,7 @@ func Search(req string) ([]string, error) {
 	return res, nil
 }
 
-func Random() string {
+func Random() *model.Address {
 	cache.RLock()
 	defer cache.RUnlock()
 
@@ -61,7 +61,7 @@ func Random() string {
 	tg := cache.Tgs[k]
 	log.Debug().Str("random telegram", tg).Send()
 
-	return cache.Persons[tg].Address
+	return cache.Persons[tg]
 }
 
 func InitDataUpdater(

@@ -70,7 +70,7 @@ func giveMeHandler() updateHandleFunc {
 		searchReq = strings.TrimSpace(searchReq)
 
 		if strings.EqualFold(searchReq, "ok") || strings.EqualFold(searchReq, "ок") {
-			msg.Text = "Вот тебе адрес:\n" + db.Random()
+			msg.Text = "Корейский рандом сказал дать тебе это:\n" + db.Random().String()
 
 			return msg, nil
 		}
