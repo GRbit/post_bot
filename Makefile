@@ -38,7 +38,7 @@ docker-db-create:
 	@docker run --name postmeta-pgsql --env-file $(ENV) -p 5432:5432 -d postgres
 
 pre-push-hook:
-	@./hooks/pre-push.sh
+	@./githooks/pre-push.sh
 
 install-pre-push:
 	@grep 'make pre-push-hook' .git/hooks/pre-push 2> /dev/null; \

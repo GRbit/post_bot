@@ -4,11 +4,12 @@ import (
 	"runtime/debug"
 
 	"github.com/grbit/post_bot/internal/config"
+	"github.com/grbit/post_bot/internal/model"
+	"github.com/grbit/post_bot/internal/state"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/xerrors"
-	"github.com/grbit/post_bot/internal/state"
-	"github.com/grbit/post_bot/internal/model"
 )
 
 const (

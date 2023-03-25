@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MESSAGING_API_ROOT_FOLDER=`echo $0 | sed 's#hooks/pre-push.sh##'`
+MESSAGING_API_ROOT_FOLDER=`echo $0 | sed 's#githooks/pre-push.sh##'`
 cd $MESSAGING_API_ROOT_FOLDER || exit 2
 
 STASH_RET=`git stash --include-untracked`

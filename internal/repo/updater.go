@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grbit/post_bot/internal/model"
+
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/sheets/v4"
-	"github.com/grbit/post_bot/internal/model"
 )
 
 // range concepts https://developers.google.com/sheets/api/guides/concepts#expandable-1

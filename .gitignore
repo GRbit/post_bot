@@ -3,4 +3,5 @@
 credentials.json
 token.json
 post_bot
+!cmd/post_bot
 main

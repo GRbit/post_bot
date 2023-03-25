@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 
-	"golang.org/x/xerrors"
 	"github.com/grbit/post_bot/internal/model"
+
+	"golang.org/x/xerrors"
 )
 
 func AddAddress(ctx context.Context, tg, address string) error {

@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	model2 "github.com/grbit/post_bot/internal/model"
+
 	"golang.org/x/xerrors"
 	"google.golang.org/api/sheets/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	model2 "github.com/grbit/post_bot/internal/model"
 )
 
 type Repo struct {

@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"golang.org/x/xerrors"
 	"github.com/grbit/post_bot/internal/model"
 	"github.com/grbit/post_bot/internal/repo"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"golang.org/x/xerrors"
 )
 
 const (

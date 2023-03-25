@@ -5,10 +5,11 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/grbit/post_bot/internal/model"
+
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/maps"
 	"golang.org/x/xerrors"
-	"github.com/grbit/post_bot/internal/model"
 )
 
 func FindByTg(ctx context.Context, tg string) (*model.Address, error) {
