@@ -1,38 +1,46 @@
-package main
+package bot
 
 import (
 	"runtime/debug"
 
-	"github.com/grbit/post_bot/model"
-	"github.com/grbit/post_bot/state"
-
+	"github.com/grbit/post_bot/internal/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/xerrors"
+	"github.com/grbit/post_bot/internal/state"
+	"github.com/grbit/post_bot/internal/model"
 )
 
-type myBot struct {
+const (
+	sendMsgRetries = 10
+)
+
+type MyBot struct {
 	*tgbotapi.BotAPI
 	Retries  int
 	Handlers map[string]*commandHandler
 }
 
-func newBot() (*myBot, error) {
-	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
+func New(cfg config.Values) (*MyBot, error) {
+	tgBot, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		return nil, xerrors.Errorf("creating Bot API: %w", err)
 	}
 
-	bot.Debug = cfg.Debug
+	tgBot.Debug = cfg.Debug
 
-	return &myBot{
-		BotAPI:  bot,
-		Retries: senMsgRetries,
-	}, nil
+	b := &MyBot{
+		BotAPI:  tgBot,
+		Retries: sendMsgRetries,
+	}
+
+	b.configure(makeHandlers())
+
+	return b, nil
 }
 
-func (b *myBot) startBot() error {
-	log.Printf("Authorized on account %s", b.Self.UserName)
+func (b *MyBot) StartBot() error {
+	log.Info().Msgf("Authorized on account %s", b.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -58,7 +66,7 @@ func (b *myBot) startBot() error {
 	return xerrors.Errorf("something went wrong, out of cycle")
 }
 
-func (b *myBot) handleUpdate(update tgbotapi.Update) error {
+func (b *MyBot) handleUpdate(update tgbotapi.Update) error {
 	defer func() {
 		if rec := recover(); rec != nil {
 			switch err := rec.(type) {
@@ -96,7 +104,13 @@ func (b *myBot) handleUpdate(update tgbotapi.Update) error {
 			msg, err = giveMeHandler()(update, st)
 		case model.CmdAddAddress:
 			msg, err = addAddressHandler()(update, st)
-		default: // ignore any non-command Messages
+		case model.CmdAddInstagram:
+			msg, err = addInstagramHandler()(update, st)
+		case model.CmdAddWishes:
+			msg, err = addWishesHandler()(update, st)
+		case model.CmdAddPersonName:
+			msg, err = addPersonNameHandler()(update, st)
+		default: // ignore any other non-command Messages
 		}
 
 	case update.Message == nil: // ignore any non-Message updates
@@ -135,7 +149,7 @@ func (b *myBot) handleUpdate(update tgbotapi.Update) error {
 	return nil
 }
 
-func (b *myBot) configure(handlers []*commandHandler) {
+func (b *MyBot) configure(handlers []*commandHandler) {
 	b.Handlers = make(map[string]*commandHandler)
 	cmds := make([]tgbotapi.BotCommand, len(handlers))
 	for i, h := range handlers {
@@ -152,7 +166,7 @@ func (b *myBot) configure(handlers []*commandHandler) {
 	log.Info().Err(err).Interface("commands", cc).Msg("got cmds")
 }
 
-func (b *myBot) sendWithRetries(message tgbotapi.Chattable) (m tgbotapi.Message, err error) {
+func (b *MyBot) sendWithRetries(message tgbotapi.Chattable) (m tgbotapi.Message, err error) {
 	for i := 1; i < b.Retries; i++ {
 		m, err = b.Send(message)
 		if err != nil {

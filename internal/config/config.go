@@ -1,15 +1,19 @@
-package main
+package config
 
 import (
+	"sync"
 	"time"
 
 	"github.com/jessevdk/go-flags"
 	"golang.org/x/xerrors"
 )
 
-var cfg config
+var (
+	cfg   Values
+	parse sync.Once
+)
 
-type config struct {
+type Values struct {
 	BotToken          string        `long:"bot-token" env:"BOT_TOKEN"`
 	LogLevel          string        `long:"log-level" default:"info" env:"LOG_LEVEL"`
 	Debug             bool          `long:"debug" env:"DEBUG"`
@@ -19,10 +23,12 @@ type config struct {
 	SpreadsheetID     string        `long:"spreadsheet-id" env:"SPREADSHEET_ID"`
 }
 
-func parseCfg() error {
-	if _, err := flags.Parse(&cfg); err != nil {
-		return xerrors.Errorf("parsing config: %w", err)
-	}
+func Get() Values {
+	parse.Do(func() {
+		if _, err := flags.Parse(&cfg); err != nil {
+			panic(xerrors.Errorf("parsing Config: %w", err))
+		}
+	})
 
-	return nil
+	return cfg
 }

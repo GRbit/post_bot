@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"context"
@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grbit/post_bot/db"
-	"github.com/grbit/post_bot/model"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/xerrors"
+	"github.com/grbit/post_bot/internal/model"
+	"github.com/grbit/post_bot/internal/repo"
 )
 
 const (
@@ -27,29 +26,27 @@ type commandHandler struct {
 }
 
 func makeHandlers() (handlers []*commandHandler) {
+	help := "Добро пожаловать домой! Этот бот создан для посткроссинга бёрнеров по всему миру. " +
+		`Отправь команду "/` + model.CmdGiveMeSome + `" чтобы получить адрес. ` +
+		"Можешь добавить ник в телефграме после команды если хочешь адрес кого-то особенного.\n\n" +
+		"Чтобы добавить свои адрес, ник в инстаграме, ФИО или пожелания для отправителя, " +
+		"напиши соответствующие команды:\n\n" +
+		"/" + model.CmdAddAddress + " - добавить адрес\n" +
+		"/" + model.CmdAddInstagram + " - добавить инстаграм\n" +
+		"/" + model.CmdAddPersonName + " - добавить ФИО\n" +
+		"/" + model.CmdAddWishes + " - добавить пожелания\n\n" +
+		"Если хочешь посмотреть свои данные, то отправь команду /" + model.CmdMyData
+
 	handlers = append(handlers,
 		&commandHandler{
-			name: "help",
-			desc: "Что почём",
-			handleFunc: stringHandler("Этот бот может выдать тебе почтовых адресов чтобы ты порадовал людей открыточками. " +
-				`Отправь команду "/` + model.CmdGiveMeSome + `" чтобы получить адрес. ` +
-				"Можешь добавить ник в телефграме после команды если хочешь адрес кого-то особенного. " +
-				"Если хочешь добавить свой адрес, то отправь команду /" + model.CmdAddAddress),
+			name:       "help",
+			desc:       "Что почём",
+			handleFunc: stringHandler(help),
 		},
 		&commandHandler{
-			name: "start",
-			desc: "Что почём",
-			handleFunc: stringHandler(
-				"Добро пожаловать домой! Этот бот создан для того, чтобы ты не заблудился в волшебном мире Холодка. " +
-					`Отправь команду "/` + model.CmdGiveMeSome + `" чтобы получить адрес. ` +
-					"Можешь добавить ник в телефграме после команды если хочешь адрес кого-то особенного.\n\n" +
-					"Чтобы добавить свои адрес, ник в инстаграме, ФИО или пожелания для отправителя, " +
-					"напиши соответствующие команды:\n\n" +
-					"/" + model.CmdAddAddress + " - добавить адрес\n" +
-					"/" + model.CmdAddInstagram + " - добавить инстаграм\n" +
-					"/" + model.CmdAddName + " - добавить ФИО\n" +
-					"/" + model.CmdAddWishes + " - добавить пожелания\n\n" +
-					"Если хочешь посмотреть свои данные, то отправь команду /" + model.CmdMyData),
+			name:       "start",
+			desc:       "Что почём",
+			handleFunc: stringHandler(help),
 		},
 		&commandHandler{
 			name:       model.CmdGiveMeSome,
@@ -72,7 +69,7 @@ func makeHandlers() (handlers []*commandHandler) {
 			handleFunc: addWishesHandler(),
 		},
 		&commandHandler{
-			name:       model.CmdAddName,
+			name:       model.CmdAddPersonName,
 			desc:       "Добавить ФИО",
 			handleFunc: addPersonNameHandler(),
 		},
@@ -210,13 +207,13 @@ func addPersonNameHandler() updateHandleFunc {
 	return func(update tgbotapi.Update, s *model.State) (tgbotapi.Chattable, error) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
-		if update.Message.Text == "/"+model.CmdAddName {
+		if update.Message.Text == "/"+model.CmdAddPersonName {
 			msg.Text = "Давай добавим ФИО! Просто напиши их в следующем сообщении."
 
 			return msg, nil
 		}
 
-		name := strings.Replace(update.Message.Text, "/"+model.CmdAddName, "", 1)
+		name := strings.Replace(update.Message.Text, "/"+model.CmdAddPersonName, "", 1)
 		name = strings.TrimSpace(name)
 
 		if err := db.AddPersonName(defaultCtx(), s.Telegram, name); err != nil {

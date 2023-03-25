@@ -3,7 +3,7 @@ package state
 import (
 	"sync"
 
-	"github.com/grbit/post_bot/model"
+	"github.com/grbit/post_bot/internal/model"
 )
 
 type stateMap struct {

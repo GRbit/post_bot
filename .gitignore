@@ -1,6 +1,6 @@
 .idea/
 .env
-db/print.go
 credentials.json
 token.json
 post_bot
+main

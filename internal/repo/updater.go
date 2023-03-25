@@ -2,20 +2,23 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/grbit/post_bot/model"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/sheets/v4"
+	"github.com/grbit/post_bot/internal/model"
 )
 
 // range concepts https://developers.google.com/sheets/api/guides/concepts#expandable-1
-const readRange = "Лист1!A:Z"
+const (
+	page      = "Лист1"
+	readRange = page + "!A:Z"
+)
 
 func init() {
 	cache.Persons = make(map[string]*model.Address)
@@ -160,7 +163,7 @@ func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
 		return xerrors.Errorf("no data found in spreadsheet %q", globalRepo.sheetID)
 	}
 
-	for _, rowColumns := range resp.Values {
+	for i, rowColumns := range resp.Values {
 		row := make([]string, len(rowColumns))
 		for i, column := range rowColumns {
 			row[i] = column.(string)
@@ -180,6 +183,8 @@ func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
 		}
 
 		if row[0] == a.Telegram {
+			log.Debug().Interface("row", row).Interface("telegram", a.Telegram).Msg("row found, updating")
+
 			// updating all the data
 			vr := &sheets.ValueRange{
 				Values: [][]interface{}{
@@ -193,8 +198,10 @@ func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
 				},
 			}
 
-			_, err = r.sheets.Spreadsheets.Values.Update(globalRepo.sheetID, readRange,
-				vr).ValueInputOption("USER_ENTERED").Do()
+			updRange := fmt.Sprintf("%s!%d:%d", page, i+1, i+1)
+
+			_, err = r.sheets.Spreadsheets.Values.Update(globalRepo.sheetID, updRange, vr).
+				ValueInputOption("USER_ENTERED").Do()
 			if err != nil {
 				return xerrors.Errorf("updating data to sheet %q: %w", globalRepo.sheetID, err)
 			}
@@ -202,6 +209,8 @@ func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
 			return nil
 		}
 	}
+
+	log.Debug().Interface("telegram", a.Telegram).Msg("row not found, appending")
 
 	// append to google table
 	vr := &sheets.ValueRange{
@@ -220,6 +229,8 @@ func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
 	if err != nil {
 		return xerrors.Errorf("appending data to sheet %q: %w", globalRepo.sheetID, err)
 	}
+
+	log.Debug().Interface("telegram", a.Telegram).Msg("row appended")
 
 	return nil
 }

@@ -1,16 +1,15 @@
 package db
 
 import (
+	"context"
 	"time"
-
-	"github.com/grbit/post_bot/model"
 
 	"golang.org/x/xerrors"
 	"google.golang.org/api/sheets/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"context"
+	model2 "github.com/grbit/post_bot/internal/model"
 )
 
 type Repo struct {
@@ -56,8 +55,8 @@ func initGlobalDB(ctx context.Context, postgresURL, spreadsheetID string) (*Repo
 	return globalRepo, nil
 }
 
-func (r *Repo) findUser(userID string) (*model.User, error) {
-	user := &model.User{}
+func (r *Repo) findUser(userID string) (*model2.User, error) {
+	user := &model2.User{}
 	if err := r.Take(&user, "id = ?", userID).Error; err != nil {
 		return nil, err
 	}
@@ -65,7 +64,7 @@ func (r *Repo) findUser(userID string) (*model.User, error) {
 	return user, nil
 }
 
-func (r *Repo) upsertAddresses(addresses []*model.Address) error {
+func (r *Repo) upsertAddresses(addresses []*model2.Address) error {
 	if len(addresses) == 0 {
 		return nil
 	}
@@ -87,11 +86,11 @@ func (r *Repo) upsertAddresses(addresses []*model.Address) error {
 		Create(addresses).Error
 }
 
-func (r *Repo) searchAddress(req string) ([]*model.Address, error) {
+func (r *Repo) searchAddress(req string) ([]*model2.Address, error) {
 	phone := preparePhone(req)
 	tg := prepareTelegram(req)
 
-	aa := []*model.Address{}
+	aa := []*model2.Address{}
 	if err := r.
 		Find(&aa,
 			"phone = ? OR email = ? OR telegram = ? OR instagram = ?",

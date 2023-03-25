@@ -100,6 +100,11 @@ func saveToken(path string, token *oauth2.Token) error {
 	return nil
 }
 
+const (
+	readScope      = "https://www.googleapis.com/auth/spreadsheets.readonly"
+	readWriteScope = "https://www.googleapis.com/auth/spreadsheets"
+)
+
 func connectToGoogleSheetsService(ctx context.Context) (*sheets.Service, error) {
 	b, err := os.ReadFile(credsPath)
 	if err != nil {
@@ -107,7 +112,7 @@ func connectToGoogleSheetsService(ctx context.Context) (*sheets.Service, error) 
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
+	config, err := google.ConfigFromJSON(b, readWriteScope)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing client secret file to config: %w", err)
 	}

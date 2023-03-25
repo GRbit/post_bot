@@ -19,7 +19,7 @@ COPY . .
 
 # Build the application
 RUN go get -d -v ./...
-RUN go build -o ./app ./.
+RUN go build -o ./app ./cmd/post_bot/main.go
 
 # Build a small image
 FROM alpine:3.17.2

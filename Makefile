@@ -36,3 +36,18 @@ test:
 
 docker-db-create:
 	@docker run --name postmeta-pgsql --env-file $(ENV) -p 5432:5432 -d postgres
+
+pre-push-hook:
+	@./hooks/pre-push.sh
+
+install-pre-push:
+	@grep 'make pre-push-hook' .git/hooks/pre-push 2> /dev/null; \
+	if [ $$? = 0 ]; then \
+		echo "already installed"; \
+	elif [ -f ".git/hooks/pre-push" ]; then \
+		echo ".git/hooks/pre-push exists. Consider it to be a text bash file."; \
+		echo "make pre-push-hook" >> .git/hooks/pre-push; \
+	else \
+		echo "#!/bin/sh\n\nmake pre-push-hook" > .git/hooks/pre-push; \
+	fi; \
+	chmod +x ".git/hooks/pre-push"
