@@ -3,11 +3,12 @@ package db
 import (
 	"time"
 
+	"github.com/grbit/post_bot/model"
+
 	"golang.org/x/xerrors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"github.com/grbit/post_bot/model"
 )
 
 type Repo struct {
@@ -39,21 +40,6 @@ func (r *Repo) findUser(userID string) (*model.User, error) {
 	}
 
 	return user, nil
-}
-
-func (r *Repo) searchAddress(req string) ([]*model.Address, error) {
-	phone := preparePhone(req)
-	tg := prepareTelegram(req)
-
-	aa := []*model.Address{}
-	if err := r.
-		Find(&aa,
-			"phone = ? OR email = ? OR telegram = ? OR instagram = ?",
-			phone, req, tg, req).Error; err != nil {
-		return nil, err
-	}
-
-	return aa, nil
 }
 
 func (r *Repo) upsertAddresses(addresses []*model.Address) error {

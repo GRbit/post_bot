@@ -3,6 +3,7 @@ package main
 import (
 	"runtime/debug"
 
+	"github.com/grbit/post_bot/model"
 	"github.com/grbit/post_bot/state"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -79,6 +80,7 @@ func (b *myBot) handleUpdate(update tgbotapi.Update) error {
 	}
 
 	st := state.Get(update.Message.Chat.ID)
+	st.Telegram = update.Message.From.UserName
 
 	// Create a new MessageConfig. We don't have text yet, so we leave it empty.
 	var msg tgbotapi.Chattable
@@ -87,17 +89,27 @@ func (b *myBot) handleUpdate(update tgbotapi.Update) error {
 	var err error
 
 	switch {
-	case st.SearchCmdWasPrevious && !update.Message.IsCommand():
-		msg, err = giveMeHandler()(update, st)
-		st.SearchCmdWasPrevious = false
-	case update.Message == nil: // ignore any non-Message updates
-	case !update.Message.IsCommand(): // ignore any non-command Messages
-	default:
-		st.SearchCmdWasPrevious = false
+	case !update.Message.IsCommand():
 
+		switch st.PreviousCmd {
+		case model.CmdGiveMeSome:
+			msg, err = giveMeHandler()(update, st)
+		case model.CmdAddAddress:
+			msg, err = addAddressHandler()(update, st)
+		default: // ignore any non-command Messages
+		}
+
+	case update.Message == nil: // ignore any non-Message updates
+	default:
 		if h, ok := b.Handlers[cmd]; ok && h != nil {
 			msg, err = h.handleFunc(update, st)
 		}
+	}
+
+	if update.Message.IsCommand() {
+		st.PreviousCmd = cmd
+	} else {
+		st.PreviousCmd = ""
 	}
 
 	if err != nil {
@@ -111,7 +123,7 @@ func (b *myBot) handleUpdate(update tgbotapi.Update) error {
 			"Ну я хз. Не понимаю что от меня хотят. Может `/help`?")
 	}
 
-	m, err := b.sendWithretries(msg)
+	m, err := b.sendWithRetries(msg)
 	if err != nil {
 		return xerrors.Errorf("sending a message %+v: %w", msg, err)
 	}
@@ -140,7 +152,7 @@ func (b *myBot) configure(handlers []*commandHandler) {
 	log.Info().Err(err).Interface("commands", cc).Msg("got cmds")
 }
 
-func (b *myBot) sendWithretries(message tgbotapi.Chattable) (m tgbotapi.Message, err error) {
+func (b *myBot) sendWithRetries(message tgbotapi.Chattable) (m tgbotapi.Message, err error) {
 	for i := 1; i < b.Retries; i++ {
 		m, err = b.Send(message)
 		if err != nil {

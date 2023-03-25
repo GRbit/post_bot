@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
-	"github.com/rs/zerolog/log"
 )
 
 const (

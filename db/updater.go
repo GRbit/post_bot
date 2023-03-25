@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grbit/post_bot/model"
+
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
-	"github.com/grbit/post_bot/model"
-	"math/rand"
 )
 
 func init() {
@@ -24,45 +24,16 @@ type everyone struct {
 	sync.RWMutex
 }
 
-var cache everyone
+func (e *everyone) Add(a *model.Address) {
+	e.Lock()
+	defer e.Unlock()
 
-func Search(req string) ([]string, error) {
-	req = strings.ToLower(req)
-
-	bb, err := globalRepo.searchAddress(req)
-	if err != nil {
-		return nil, xerrors.Errorf("searching in DB: %w", err)
-	}
-
-	var res []string
-	for _, b := range bb {
-		res = append(res, b.String())
-	}
-
-	return res, nil
+	e.Persons[a.Telegram] = a
+	e.Tgs = append(e.Tgs, a.Telegram)
+	e.Tgs = lo.Uniq(e.Tgs)
 }
 
-func Random() *model.Address {
-	cache.RLock()
-	defer cache.RUnlock()
-
-	log.Trace().
-		Interface("telegrams", cache.Tgs).
-		Interface("persons", cache.Persons).
-		Msg("Random call")
-
-	log.Debug().
-		Interface("len(telegrams)", len(cache.Tgs)).
-		Interface("len(persons)", len(cache.Persons)).
-		Msg("Random call")
-
-	k := rand.Intn(len(cache.Tgs))
-	log.Debug().Str("random key", cache.Tgs[k]).Send()
-	tg := cache.Tgs[k]
-	log.Debug().Str("random telegram", tg).Send()
-
-	return cache.Persons[tg]
-}
+var cache everyone // almost not used, probably better remove
 
 func InitDataUpdater(
 	ctx context.Context,
@@ -113,10 +84,9 @@ func updateData(ctx context.Context, spID string) error {
 		cache.Persons[aa[i].Telegram] = aa[i]
 	}
 
-	cache.Tgs = []string{}
-	for i := range aa {
-		cache.Tgs = append(cache.Tgs, aa[i].Telegram)
-	}
+	cache.Tgs = lo.Map(aa, func(a *model.Address, _ int) string {
+		return a.Telegram
+	})
 
 	log.Debug().Msg("cache updated")
 
@@ -196,34 +166,6 @@ func prepareBuilding(b string) string {
 	b = strings.ReplaceAll(b, " ", "")
 	b = strings.ReplaceAll(b, "Зг", "ЗГ")
 	b = regexp.MustCompile("([^0-9])([0-9])-([0-9])").ReplaceAllString(b, "${1}0${2}-${3}")
-
-	return b
-}
-
-func preparePhone(b string) string {
-	l := len("79998148871")
-
-	b = strings.ReplaceAll(b, `"`, ``)
-	b = strings.ReplaceAll(b, " ", "")
-	b = strings.ReplaceAll(b, "(", "")
-	b = strings.ReplaceAll(b, ")", "")
-	b = strings.ReplaceAll(b, "+", "")
-	b = strings.ReplaceAll(b, "-", "")
-
-	if len(b) == l && strings.HasPrefix(b, "89") {
-		b = strings.Replace(b, "8", "7", 1)
-	} else if len(b) == l-1 && strings.HasPrefix(b, "9") {
-		b = "7" + b
-	}
-
-	return b
-}
-
-func prepareTelegram(b string) string {
-	b = strings.ReplaceAll(b, "@", "")
-	b = strings.ReplaceAll(b, " ", "")
-	b = strings.ReplaceAll(b, "http://t.me", "")
-	b = strings.ReplaceAll(b, "https://t.me", "")
 
 	return b
 }

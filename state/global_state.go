@@ -25,7 +25,7 @@ func Get(chatID int64) *model.State {
 		return s
 	}
 
-	s := model.State{SearchCmdWasPrevious: false}
+	s := model.State{ChatID: chatID}
 	globalStates.States[chatID] = &s
 
 	return &s

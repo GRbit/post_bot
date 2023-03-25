@@ -8,6 +8,10 @@ type Address struct {
 	PersonName string
 	Address    string
 	Wishes     string
+
+	// Not added yet
+	Email string
+	Phone string
 }
 
 func (p Address) String() string {
