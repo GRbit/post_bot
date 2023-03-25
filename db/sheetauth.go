@@ -100,7 +100,7 @@ func saveToken(path string, token *oauth2.Token) error {
 	return nil
 }
 
-func newSheetsService(ctx context.Context) (*sheets.Service, error) {
+func connectToGoogleSheetsService(ctx context.Context) (*sheets.Service, error) {
 	b, err := os.ReadFile(credsPath)
 	if err != nil {
 		return nil, xerrors.Errorf("reading client secret file: %w", err)

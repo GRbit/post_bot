@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +11,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
+	"google.golang.org/api/sheets/v4"
 )
+
+// range concepts https://developers.google.com/sheets/api/guides/concepts#expandable-1
+const readRange = "Лист1!A:Z"
 
 func init() {
 	cache.Persons = make(map[string]*model.Address)
@@ -20,7 +23,6 @@ func init() {
 
 type everyone struct {
 	Persons map[string]*model.Address
-	Tgs     []string
 	sync.RWMutex
 }
 
@@ -29,8 +31,6 @@ func (e *everyone) Add(a *model.Address) {
 	defer e.Unlock()
 
 	e.Persons[a.Telegram] = a
-	e.Tgs = append(e.Tgs, a.Telegram)
-	e.Tgs = lo.Uniq(e.Tgs)
 }
 
 var cache everyone // almost not used, probably better remove
@@ -39,34 +39,34 @@ func InitDataUpdater(
 	ctx context.Context,
 	postgresURL string,
 	spID string,
-) error {
-	if err := initGlobalDB(postgresURL); err != nil {
-		return xerrors.Errorf("init global DB: %w", err)
+) (*Repo, error) {
+	repo, err := initGlobalDB(ctx, postgresURL, spID)
+	if err != nil {
+		return nil, xerrors.Errorf("init global DB: %w", err)
 	}
 
-	if err := updateData(ctx, spID); err != nil {
-		return xerrors.Errorf("update data: %w", err)
+	if err := repo.updateData(ctx); err != nil {
+		return nil, xerrors.Errorf("update data: %w", err)
 	}
 
 	log.Debug().Msg("InitDataUpdater done")
 
-	return nil
+	return repo, nil
 }
 
-func RunDataUpdater(
+func (r *Repo) RunDataUpdater(
 	ctx context.Context,
 	dataReloadTimeout time.Duration,
-	spID string,
 ) {
 	for range time.NewTicker(dataReloadTimeout).C {
-		if err := updateData(ctx, spID); err != nil {
+		if err := r.updateData(ctx); err != nil {
 			log.Error().Err(err).Msg("updating data")
 		}
 	}
 }
 
-func updateData(ctx context.Context, spID string) error {
-	aa, err := getAddresses(ctx, spID)
+func (r *Repo) updateData(ctx context.Context) error {
+	aa, err := r.getAddressesFromGoogle(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting addresses: %w", err)
 	}
@@ -84,31 +84,19 @@ func updateData(ctx context.Context, spID string) error {
 		cache.Persons[aa[i].Telegram] = aa[i]
 	}
 
-	cache.Tgs = lo.Map(aa, func(a *model.Address, _ int) string {
-		return a.Telegram
-	})
-
 	log.Debug().Msg("cache updated")
 
 	return nil
 }
 
-func getAddresses(ctx context.Context, spreadsheetID string) ([]*model.Address, error) {
-	srv, err := newSheetsService(ctx)
+func (r *Repo) getAddressesFromGoogle(ctx context.Context) ([]*model.Address, error) {
+	resp, err := r.sheets.Spreadsheets.Values.Get(globalRepo.sheetID, readRange).Do()
 	if err != nil {
-		return nil, xerrors.Errorf("creating new spreadsheets client: %w", err)
-	}
-
-	// range concepts https://developers.google.com/sheets/api/guides/concepts#expandable-1
-	readRange := "Лист1!A:Z"
-
-	resp, err := srv.Spreadsheets.Values.Get(spreadsheetID, readRange).Do()
-	if err != nil {
-		return nil, xerrors.Errorf("retrieving data from sheet %q: %w", spreadsheetID, err)
+		return nil, xerrors.Errorf("retrieving data from sheet %q: %w", globalRepo.sheetID, err)
 	}
 
 	if len(resp.Values) == 0 {
-		return nil, xerrors.Errorf("no data found in spreadsheet %q", spreadsheetID)
+		return nil, xerrors.Errorf("no data found in spreadsheet %q", globalRepo.sheetID)
 	}
 
 	persons := []*model.Address{}
@@ -119,7 +107,7 @@ func getAddresses(ctx context.Context, spreadsheetID string) ([]*model.Address, 
 			row[i] = column.(string)
 		}
 
-		if len(row) < 4 {
+		if len(row) < 2 {
 			log.Debug().Interface("row", row).Msg("Skipping too short row")
 
 			continue
@@ -162,10 +150,76 @@ func getAddresses(ctx context.Context, spreadsheetID string) ([]*model.Address, 
 	return persons, nil
 }
 
-func prepareBuilding(b string) string {
-	b = strings.ReplaceAll(b, " ", "")
-	b = strings.ReplaceAll(b, "Зг", "ЗГ")
-	b = regexp.MustCompile("([^0-9])([0-9])-([0-9])").ReplaceAllString(b, "${1}0${2}-${3}")
+func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
+	resp, err := r.sheets.Spreadsheets.Values.Get(globalRepo.sheetID, readRange).Do()
+	if err != nil {
+		return xerrors.Errorf("retrieving data from sheet %q: %w", globalRepo.sheetID, err)
+	}
 
-	return b
+	if len(resp.Values) == 0 {
+		return xerrors.Errorf("no data found in spreadsheet %q", globalRepo.sheetID)
+	}
+
+	for _, rowColumns := range resp.Values {
+		row := make([]string, len(rowColumns))
+		for i, column := range rowColumns {
+			row[i] = column.(string)
+		}
+
+		if len(row) < 4 {
+			log.Debug().Interface("row", row).Msg("Skipping too short row")
+
+			continue
+		}
+
+		if lo.Contains(row, "Телеграм") {
+			// Телеграм	Инстаграмм	Имя и фамилия	Адрес	Пожелания
+			log.Debug().Interface("row", row).Msg("Skipping main row")
+
+			continue
+		}
+
+		if row[0] == a.Telegram {
+			// updating all the data
+			vr := &sheets.ValueRange{
+				Values: [][]interface{}{
+					{
+						a.Telegram,
+						a.Instagram,
+						a.PersonName,
+						a.Address,
+						a.Wishes,
+					},
+				},
+			}
+
+			_, err = r.sheets.Spreadsheets.Values.Update(globalRepo.sheetID, readRange,
+				vr).ValueInputOption("USER_ENTERED").Do()
+			if err != nil {
+				return xerrors.Errorf("updating data to sheet %q: %w", globalRepo.sheetID, err)
+			}
+
+			return nil
+		}
+	}
+
+	// append to google table
+	vr := &sheets.ValueRange{
+		Values: [][]interface{}{
+			{
+				a.Telegram,
+				a.Instagram,
+				a.PersonName,
+				a.Address,
+				a.Wishes,
+			},
+		},
+	}
+
+	_, err = r.sheets.Spreadsheets.Values.Append(globalRepo.sheetID, readRange, vr).ValueInputOption("USER_ENTERED").Do()
+	if err != nil {
+		return xerrors.Errorf("appending data to sheet %q: %w", globalRepo.sheetID, err)
+	}
+
+	return nil
 }

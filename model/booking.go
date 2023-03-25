@@ -15,10 +15,26 @@ type Address struct {
 }
 
 func (p Address) String() string {
-	msg := p.PersonName + ". Адрес: " + p.Address
+	msg := ""
+	if p.PersonName != "" {
+		msg += p.PersonName + "."
+	}
+
+	if p.Address != "" {
+		msg += " Адрес: " + p.Address + "."
+	}
+
 	if p.Wishes != "" {
-		msg += ". Пожелания: " + p.Wishes
+		msg += " Пожелания: " + p.Wishes + "."
 	}
 
 	return msg
+}
+
+func (p Address) IsEmpty() bool {
+	if p.Instagram == "" && p.PersonName == "" && p.Address == "" && p.Wishes == "" {
+		return true
+	}
+
+	return false
 }

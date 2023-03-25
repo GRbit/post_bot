@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/grbit/post_bot/db"
 	"github.com/grbit/post_bot/model"
@@ -148,7 +150,7 @@ func addAddressHandler() updateHandleFunc {
 		addr := strings.Replace(update.Message.Text, "/"+model.CmdAddAddress, "", 1)
 		addr = strings.TrimSpace(addr)
 
-		if err := db.AddAddress(s.Telegram, addr); err != nil {
+		if err := db.AddAddress(defaultCtx(), s.Telegram, addr); err != nil {
 			return nil, xerrors.Errorf("adding address (req=%q): %w", addr, err)
 		}
 
@@ -171,7 +173,7 @@ func addInstagramHandler() updateHandleFunc {
 		inst := strings.Replace(update.Message.Text, "/"+model.CmdAddInstagram, "", 1)
 		inst = strings.TrimSpace(inst)
 
-		if err := db.AddInstagram(s.Telegram, inst); err != nil {
+		if err := db.AddInstagram(defaultCtx(), s.Telegram, inst); err != nil {
 			return nil, xerrors.Errorf("adding instagram (req=%q): %w", inst, err)
 		}
 
@@ -194,7 +196,7 @@ func addWishesHandler() updateHandleFunc {
 		wishes := strings.Replace(update.Message.Text, "/"+model.CmdAddWishes, "", 1)
 		wishes = strings.TrimSpace(wishes)
 
-		if err := db.AddWishes(s.Telegram, wishes); err != nil {
+		if err := db.AddWishes(defaultCtx(), s.Telegram, wishes); err != nil {
 			return nil, xerrors.Errorf("adding wishes (req=%q): %w", wishes, err)
 		}
 
@@ -217,7 +219,7 @@ func addPersonNameHandler() updateHandleFunc {
 		name := strings.Replace(update.Message.Text, "/"+model.CmdAddName, "", 1)
 		name = strings.TrimSpace(name)
 
-		if err := db.AddPersonName(s.Telegram, name); err != nil {
+		if err := db.AddPersonName(defaultCtx(), s.Telegram, name); err != nil {
 			return nil, xerrors.Errorf("adding name (req=%q): %w", name, err)
 		}
 
@@ -231,18 +233,33 @@ func myDataHandler() updateHandleFunc {
 	return func(update tgbotapi.Update, s *model.State) (tgbotapi.Chattable, error) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
-		addr, err := db.FindByTg(s.Telegram)
+		addr, err := db.FindByTg(defaultCtx(), s.Telegram)
 		if err != nil {
 			return nil, xerrors.Errorf("searching address by (tg=%q): %w", s.Telegram, err)
 		}
 
-		if update.Message.Text == "/"+model.CmdMyData {
-			msg.Text = "Вот твои данные:\n" + addr.String()
-			msg.Text += "\nInstagram: " + addr.Instagram
+		if addr.IsEmpty() {
+			msg.Text = "Ты ещё не добавил свои данные. Начни с адреса /" + model.CmdAddAddress
 
 			return msg, nil
 		}
 
-		return nil, nil
+		msg.Text = "Вот твои данные:\n" + addr.String()
+		msg.Text += "\nInstagram: " + addr.Instagram
+
+		return msg, nil
 	}
+}
+
+const defaultCtxTimeout = 10 * time.Second
+
+func defaultCtx() context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCtxTimeout)
+
+	go func() {
+		<-ctx.Done()
+		cancel()
+	}()
+
+	return ctx
 }

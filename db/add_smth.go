@@ -1,15 +1,17 @@
 package db
 
 import (
+	"context"
+
 	"github.com/grbit/post_bot/model"
 
 	"golang.org/x/xerrors"
 )
 
-func AddAddress(tg, address string) error {
+func AddAddress(ctx context.Context, tg, address string) error {
 	tg = prepareTelegram(tg)
 
-	a, err := globalRepo.getOneAddress(tg)
+	a, err := globalRepo.getOneAddress(ctx, tg)
 	if err != nil {
 		return xerrors.Errorf("searching address in DB: %w", err)
 	}
@@ -25,11 +27,11 @@ func AddAddress(tg, address string) error {
 	return nil
 }
 
-func AddInstagram(tg, instagram string) error {
+func AddInstagram(ctx context.Context, tg, instagram string) error {
 	tg = prepareTelegram(tg)
 	instagram = prepareInstagram(instagram)
 
-	a, err := globalRepo.getOneAddress(tg)
+	a, err := globalRepo.getOneAddress(ctx, tg)
 	if err != nil {
 		return xerrors.Errorf("searching address in DB: %w", err)
 	}
@@ -45,10 +47,10 @@ func AddInstagram(tg, instagram string) error {
 	return nil
 }
 
-func AddWishes(tg, wishes string) error {
+func AddWishes(ctx context.Context, tg, wishes string) error {
 	tg = prepareTelegram(tg)
 
-	a, err := globalRepo.getOneAddress(tg)
+	a, err := globalRepo.getOneAddress(ctx, tg)
 	if err != nil {
 		return xerrors.Errorf("searching address in DB: %w", err)
 	}
@@ -64,10 +66,10 @@ func AddWishes(tg, wishes string) error {
 	return nil
 }
 
-func AddPersonName(tg, name string) error {
+func AddPersonName(ctx context.Context, tg, name string) error {
 	tg = prepareTelegram(tg)
 
-	a, err := globalRepo.getOneAddress(tg)
+	a, err := globalRepo.getOneAddress(ctx, tg)
 	if err != nil {
 		return xerrors.Errorf("searching address in DB: %w", err)
 	}
@@ -83,11 +85,11 @@ func AddPersonName(tg, name string) error {
 	return nil
 }
 
-func (r *Repo) getOneAddress(tg string) (*model.Address, error) {
+func (r *Repo) getOneAddress(ctx context.Context, tg string) (*model.Address, error) {
 	tg = prepareTelegram(tg)
 
 	aa := []*model.Address{}
-	if err := r.Find(&aa, "telegram = ?", tg).Error; err != nil {
+	if err := r.WithContext(ctx).Find(&aa, "telegram = ?", tg).Error; err != nil {
 		return nil, err
 	}
 

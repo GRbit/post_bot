@@ -29,11 +29,12 @@ func main() {
 
 	log.Info().Interface("config", cfg).Send()
 
-	if err := db.InitDataUpdater(ctx, cfg.PostgresURL, cfg.SpreadsheetID); err != nil {
+	repo, err := db.InitDataUpdater(ctx, cfg.PostgresURL, cfg.SpreadsheetID)
+	if err != nil {
 		log.Panic().Err(err).Msgf("can't run data updater: %+v", err)
 	}
 
-	go db.RunDataUpdater(ctx, cfg.DataReloadTimeout, cfg.SpreadsheetID)
+	go repo.RunDataUpdater(ctx, cfg.DataReloadTimeout)
 
 	bot, err := newBot()
 	if err != nil {

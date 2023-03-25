@@ -6,13 +6,17 @@ import (
 	"github.com/grbit/post_bot/model"
 
 	"golang.org/x/xerrors"
+	"google.golang.org/api/sheets/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"context"
 )
 
 type Repo struct {
 	*gorm.DB
+	sheets  *sheets.Service
+	sheetID string
 }
 
 var globalRepo *Repo
@@ -22,15 +26,34 @@ const (
 	connMaxLifetime = time.Minute
 )
 
-func initGlobalDB(postgresURL string) error {
-	db, err := ConnectDB(postgresURL, poolSize, connMaxLifetime)
+func initGlobalDB(ctx context.Context, postgresURL, spreadsheetID string) (*Repo, error) {
+	pg := postgres.New(postgres.Config{DSN: postgresURL, PreferSimpleProtocol: true})
+	db, err := gorm.Open(pg)
 	if err != nil {
-		return xerrors.Errorf("connecting to DB: %w", err)
+		return nil, xerrors.Errorf("opening form connection: %w", err)
 	}
 
-	globalRepo = &Repo{DB: db}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, xerrors.Errorf("getting sql.DB from gorm.DB: %w", err)
+	}
 
-	return nil
+	sqlDB.SetMaxOpenConns(poolSize)
+	sqlDB.SetMaxIdleConns(poolSize)
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+
+	googleSheets, err := connectToGoogleSheetsService(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("connecting to google sheets: %w", err)
+	}
+
+	globalRepo = &Repo{
+		DB:      db,
+		sheets:  googleSheets,
+		sheetID: spreadsheetID,
+	}
+
+	return globalRepo, nil
 }
 
 func (r *Repo) findUser(userID string) (*model.User, error) {
@@ -64,21 +87,17 @@ func (r *Repo) upsertAddresses(addresses []*model.Address) error {
 		Create(addresses).Error
 }
 
-func ConnectDB(url string, poolSize int, connMaxLifetime time.Duration) (*gorm.DB, error) {
-	pg := postgres.New(postgres.Config{DSN: url, PreferSimpleProtocol: true})
-	db, err := gorm.Open(pg)
-	if err != nil {
-		return nil, xerrors.Errorf("opening form connection: %w", err)
+func (r *Repo) searchAddress(req string) ([]*model.Address, error) {
+	phone := preparePhone(req)
+	tg := prepareTelegram(req)
+
+	aa := []*model.Address{}
+	if err := r.
+		Find(&aa,
+			"phone = ? OR email = ? OR telegram = ? OR instagram = ?",
+			phone, req, tg, req).Error; err != nil {
+		return nil, err
 	}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, xerrors.Errorf("getting sql.DB from gorm.DB: %w", err)
-	}
-
-	sqlDB.SetMaxOpenConns(poolSize)
-	sqlDB.SetMaxIdleConns(poolSize)
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)
-
-	return db, nil
+	return aa, nil
 }
