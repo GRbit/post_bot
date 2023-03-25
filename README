@@ -1,2 +1,12 @@
-Никакого описания, просто пет проджект для пост кроссинга. Выдаёт людям адреса из гугл таблички, саму табличку хранит в
-постгрессе.
+Greetings Traveler!
+
+I wrote this project to help people keep in touch with their friends and family while traveling, moving to another
+country, or fleed from their home country.
+
+This thing is a very simple Telegram bot that allows you to get the address of your friend (who has previously shared
+his/her/their address with a bot) and send him a postcard, letter, or any other thing you want to send to make your friend happy.
+
+The code and architecture of this project were born out of my experience, but 100% chaotically. Plan was changed many times, at first it has a completely different purpose. I'm a professional coder, but I was aiming to make a working thing as fast as possible.
+So, I just wrote a code that works. I'm not proud of how this thing works, there is a lot of room for improvement here, but I'm proud that I did it in ~2 working days.
+
+Feel free to use this code for your own purposes, though, I'm not responsible for anything. Just have fun.
