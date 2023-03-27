@@ -105,7 +105,8 @@ func giveMeHandler() updateHandleFunc {
 
 			return msg, nil
 		case !a.Approved:
-			msg.Text = "Модераторы ещё не одобрили твои данные. Подожди немного или напиши @rain_aroma." +
+			msg.Text = "Модераторы ещё не одобрили твои данные. " +
+				"Подожди немного или напиши модераторам: @rain_aroma или @OneTone." +
 				"Мы стараемся давать доступ только проверенным людям."
 
 			return msg, nil
