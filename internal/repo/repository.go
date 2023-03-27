@@ -2,10 +2,12 @@ package db
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	model2 "github.com/grbit/post_bot/internal/model"
 
+	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/sheets/v4"
 	"gorm.io/driver/postgres"
@@ -70,27 +72,58 @@ func (r *Repo) upsertAddresses(addresses []*model2.Address) error {
 		return nil
 	}
 
-	return r.
-		Clauses(
-			clause.OnConflict{
-				Columns:   []clause.Column{{Name: "telegram"}},
-				Where:     clause.Where{Exprs: []clause.Expression{gorm.Expr("addresses.deleted_at IS NULL")}},
-				UpdateAll: true,
-			},
-		).
-		Create(addresses).Error
+	return r.Clauses(
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "telegram"}},
+			Where:     clause.Where{Exprs: []clause.Expression{gorm.Expr("addresses.deleted_at IS NULL")}},
+			UpdateAll: true,
+		},
+	).Create(addresses).Error
 }
 
 func (r *Repo) searchAddress(req string) ([]*model2.Address, error) {
+	if req == "" {
+		return nil, nil
+	}
+
 	phone := preparePhone(req)
 	tg := prepareTelegram(req)
+	inst := prepareInstagram(req)
 
 	aa := []*model2.Address{}
-	if err := r.
-		Find(&aa,
-			"phone = ? OR email = ? OR telegram = ? OR instagram = ?",
-			phone, req, tg, req).Error; err != nil {
+	if err := r.Find(&aa,
+		"phone = ? OR email = ? OR telegram = ? OR instagram = ?",
+		phone, req, tg, inst).Error; err != nil {
 		return nil, err
+	}
+
+	if len(aa) == 0 {
+		if err := r.Find(&aa, "person_name ~* ?", req).Error; err != nil {
+			return nil, err
+		}
+
+		lo.Filter(aa, func(a *model2.Address, _ int) bool {
+			if a.PersonName == "" {
+				return false
+			}
+
+			if strings.EqualFold(a.PersonName, req) {
+				return true
+			}
+
+			ss := strings.Split(a.PersonName, " ")
+			for _, s := range ss {
+				if len(s) < 2 {
+					continue
+				}
+
+				if strings.EqualFold(s, req) {
+					return true
+				}
+			}
+
+			return false
+		})
 	}
 
 	return aa, nil

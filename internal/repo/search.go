@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"math/rand"
-	"strings"
 
 	"github.com/grbit/post_bot/internal/model"
 
@@ -22,7 +21,9 @@ func FindByTg(ctx context.Context, tg string) (*model.Address, error) {
 }
 
 func Search(req string) ([]string, error) {
-	req = strings.ToLower(req)
+	if req == "" {
+		return nil, nil
+	}
 
 	bb, err := globalRepo.searchAddress(req)
 	if err != nil {

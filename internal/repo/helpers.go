@@ -29,6 +29,7 @@ func prepareTelegram(b string) string {
 	b = strings.ReplaceAll(b, "http://www.t.me", "")
 	b = strings.ReplaceAll(b, "https://www.t.me", "")
 	b = strings.Trim(b, "/")
+	b = strings.ToLower(b)
 
 	return b
 }
@@ -41,6 +42,7 @@ func prepareInstagram(b string) string {
 	b = strings.ReplaceAll(b, "http://instagram.com", "")
 	b = strings.ReplaceAll(b, "https://instagram.com", "")
 	b = strings.Trim(b, "/")
+	b = strings.ToLower(b)
 
 	return b
 }

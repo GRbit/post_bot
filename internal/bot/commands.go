@@ -35,7 +35,7 @@ func makeHandlers() (handlers []*commandHandler) {
 		"/" + model.CmdAddAddress + " - добавить адрес\n" +
 		"/" + model.CmdAddInstagram + " - добавить инстаграм\n" +
 		"/" + model.CmdAddPersonName + " - добавить ФИО\n" +
-		"/" + model.CmdAddWishes + " - добавить пожелания\n\n" +
+		"/" + model.CmdAddWishes + " - добавить пожелания (что ты хочешь получить по почте)\n\n" +
 		"Если хочешь посмотреть свои данные, то отправь команду /" + model.CmdMyData
 
 	handlers = append(handlers,
@@ -114,6 +114,10 @@ func giveMeHandler() updateHandleFunc {
 			msg.Text += `Или, если хочешь случайный адрес, то просто напиши "ok".`
 
 			return msg, nil
+		case update.Message.Text == "":
+			msg.Text = "Ты не написал ничего. Я понимаю только текст. Напиши ник в Telegram например."
+
+			return msg, nil
 		}
 
 		searchReq := strings.Replace(update.Message.Text, "/"+model.CmdGiveMeSome, "", 1)
@@ -162,6 +166,13 @@ func addAddressHandler() updateHandleFunc {
 
 		addr := strings.Replace(update.Message.Text, "/"+model.CmdAddAddress, "", 1)
 		addr = strings.TrimSpace(addr)
+		addr = strings.ReplaceAll(addr, "  ", " ")
+
+		if len(addr) < 10 {
+			msg.Text = "Сомневаюсь что это твой адрес, какой-то он короткий. Попробуй ещё раз."
+
+			return msg, nil
+		}
 
 		if err := db.AddAddress(defaultCtx(), s.Telegram, addr); err != nil {
 			return nil, xerrors.Errorf("adding address (req=%q): %w", addr, err)
