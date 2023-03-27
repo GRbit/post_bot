@@ -269,7 +269,9 @@ func myDataHandler() updateHandleFunc {
 		}
 
 		msg.Text = "Вот твои данные:\n" + addr.String()
-		msg.Text += "\nInstagram: " + addr.Instagram
+		if addr.Instagram != "" {
+			msg.Text += "\nInstagram: " + addr.Instagram + "."
+		}
 
 		return msg, nil
 	}
