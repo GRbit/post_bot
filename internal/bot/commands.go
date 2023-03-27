@@ -28,10 +28,10 @@ type commandHandler struct {
 
 func makeHandlers() (handlers []*commandHandler) {
 	help := "Добро пожаловать домой! Этот бот создан для посткроссинга бёрнеров по всему миру. " +
-		`Отправь команду "/` + model.CmdGiveMeSome + `" чтобы получить адрес. ` +
-		"Можешь добавить ник в телефграме после команды если хочешь адрес кого-то особенного.\n\n" +
-		"Чтобы добавить свои адрес, ник в инстаграме, ФИО или пожелания для отправителя, " +
-		"напиши соответствующие команды:\n\n" +
+		"Здесь ты можешь оставить свой адрес для писем, а можешь получить адрес кого-нибудь из друзей. " +
+		"Отправь команду /" + model.CmdGiveMeSome + " чтобы получить рандомный адрес получателя. " +
+		"Если ты хочешь получить адрес кого-то особенного, то можешь добавить его ник в телеграме после команды.\n\n" +
+		"Чтобы добавить свои адрес, ник в инстаграме, ФИО или пожелания для отправителя, напиши соответствующие команды:\n\n" +
 		"/" + model.CmdAddAddress + " - добавить адрес\n" +
 		"/" + model.CmdAddInstagram + " - добавить инстаграм\n" +
 		"/" + model.CmdAddPersonName + " - добавить ФИО\n" +
@@ -94,7 +94,22 @@ func giveMeHandler() updateHandleFunc {
 	return func(update tgbotapi.Update, s *model.State) (tgbotapi.Chattable, error) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
-		if update.Message.Text == "/"+model.CmdGiveMeSome {
+		a, err := db.FindByTg(defaultCtx(), s.Telegram)
+		if err != nil {
+			return nil, xerrors.Errorf("finding by telegram '%s': %w", s.Telegram, err)
+		}
+
+		switch {
+		case a.Address == "":
+			msg.Text = "Ты не добавил адрес. Напиши /" + model.CmdAddAddress + " чтобы добавить."
+
+			return msg, nil
+		case !a.Approved:
+			msg.Text = "Модераторы ещё не одобрили твои данные. Подожди немного или напиши @rain_aroma." +
+				"Мы стараемся давать доступ только проверенным людям."
+
+			return msg, nil
+		case update.Message.Text == "/"+model.CmdGiveMeSome:
 			msg.Text = "Отлично! Теперь напиши ник в Telegram/Instagram чтобы я мог найти адрес."
 			msg.Text += `Или, если хочешь случайный адрес, то просто напиши "ok".`
 

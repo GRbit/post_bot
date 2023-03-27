@@ -9,6 +9,7 @@ CREATE TABLE addresses (
     wishes      TEXT,
     phone       TEXT,
     email       TEXT,
+    approved    BOOLEAN,
     created_at timestamp with time zone,
     updated_at timestamp with time zone,
     deleted_at timestamp with time zone

@@ -73,15 +73,9 @@ func (r *Repo) upsertAddresses(addresses []*model2.Address) error {
 	return r.
 		Clauses(
 			clause.OnConflict{
-				Columns: []clause.Column{{Name: "telegram"}},
-				Where:   clause.Where{Exprs: []clause.Expression{gorm.Expr("addresses.deleted_at IS NULL")}},
-				DoUpdates: clause.AssignmentColumns([]string{
-					"instagram",
-					"person_name",
-					"address",
-					"wishes",
-					"updated_at",
-				}),
+				Columns:   []clause.Column{{Name: "telegram"}},
+				Where:     clause.Where{Exprs: []clause.Expression{gorm.Expr("addresses.deleted_at IS NULL")}},
+				UpdateAll: true,
 			},
 		).
 		Create(addresses).Error

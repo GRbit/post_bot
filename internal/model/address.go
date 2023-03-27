@@ -9,6 +9,8 @@ type Address struct {
 	Address    string
 	Wishes     string
 
+	Approved bool
+
 	// Not added yet
 	Email string
 	Phone string

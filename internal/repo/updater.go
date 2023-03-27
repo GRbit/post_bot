@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +139,8 @@ func (r *Repo) getAddressesFromGoogle(ctx context.Context) ([]*model.Address, er
 				a.Address = row[i]
 			case 4:
 				a.Wishes = row[i]
+			case 5:
+				a.Approved = parseBool(row[i])
 			}
 		}
 
@@ -145,13 +148,21 @@ func (r *Repo) getAddressesFromGoogle(ctx context.Context) ([]*model.Address, er
 
 		log.Trace().
 			Interface("row", row).
-			Interface("person", persons[len(persons)-1]).
+			Interface("person", a).
 			Msg("Row added")
 	}
 
 	log.Info().Int("persons", len(persons)).Msg("persons readed")
 
 	return persons, nil
+}
+
+var trueValues = []string{"1", "да", "Да", "ДА", "ок", "Ок", "ОК", "ок", "ОК", "Ок", "true", "True", "TRUE", "yes", "Yes", "YES"}
+
+func parseBool(s string) bool {
+	b, _ := strconv.ParseBool(s)
+
+	return b || lo.Contains(trueValues, strings.TrimSpace(s))
 }
 
 func (r *Repo) pushAddressToGoogleTable(a *model.Address) error {
